@@ -20,12 +20,53 @@ async function Insert(req, res) {
     }
 
     try {
-        const transaction = await prisma.transaction.create({
-            data: payload
-        })
+        // Temukan akun sumber (dari) dan akun tujuan (ke)
+        const fromAccount = await prisma.bank_accounts.findUnique({
+            where: { id: source_account_id }
+        });
+        const toAccount = await prisma.bank_accounts.findUnique({
+            where: { id: destination_account_id }
+        });
 
-        let resp = ResponseTemplate(transaction, 'success', null, 200)
-        res.json(resp)
+        if (!fromAccount || !toAccount) {
+            return res.status(404).json({ error: 'Akun tidak ditemukan.' });
+        }
+
+        if (fromAccount.balance < amount) {
+            return res.status(400).json({ error: 'Saldo akun tidak mencukupi.' });
+        }
+
+        // Mulai transaksi
+        await prisma.$transaction([
+            prisma.bank_accounts.update({
+                where: { id: source_account_id },
+                data: {
+                    balance: {
+                        decrement: amount
+                    }
+                }
+            }),
+            prisma.bank_accounts.update({
+                where: { id: destination_account_id },
+                data: {
+                    balance: {
+                        increment: amount
+                    }
+                }
+            }),
+            prisma.transaction.create({
+                data: {
+                    source_account_id,
+                    destination_account_id,
+                    amount
+                }
+            })
+        ]);
+        // const transaction = await prisma.transaction.create({
+        //     data: payload
+        // })
+
+        res.json({ message: 'Transaksi berhasil.' });
         return
 
     } catch (error) {
@@ -85,7 +126,11 @@ async function GetByPK(req, res) {
         const transaction1 = await prisma.transaction.findUnique({
             where: {
                 id: Number(transaction)
-            },            
+            },
+            include: {                
+                fromAccount: true,
+                toAccount: true
+            }            
         })
 
         let resp = ResponseTemplate(transaction1, 'success', null, 200)
