@@ -87,7 +87,9 @@ async function GetByPK(req, res) {
                 id: Number(accountId)
             },
             include: {
-                user: true
+                user: true,
+                transactions: true,
+                transactionFrom: true
             }
         })
 

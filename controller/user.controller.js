@@ -58,7 +58,8 @@ async function Get(req, res) {
         const users = await prisma.users.findMany({
             skip,
             take: perPage,
-            where: payload,select: {
+            where: payload,
+            select: {
                 email: true,
                 name: true,
             },            
@@ -86,8 +87,12 @@ async function GetByPK(req, res) {
             where: {
                 id: Number(userId)
             },
+            select: {
+                email: true,
+                name: true,
+            },
             include: {
-                profiles: true
+                profiles: true,                
             }
         })
 
